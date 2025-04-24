@@ -31,9 +31,20 @@ export default function Layout({ children, onLogout }) {
 
       <main className="container py-4">{children}</main>
 
-      <footer className="text-center text-muted py-4 small">
-        GrowMate © {new Date().getFullYear()} – mit 💚 gepflegt
-      </footer>
+      <footer className="text-center text-muted py-4 small mt-5">
+  <div className="mb-2">
+    <Link to="/impressum" className="text-muted me-3">
+      Impressum
+    </Link>
+    <Link to="/datenschutz" className="text-muted">
+      Datenschutz
+    </Link>
+  </div>
+  <div>
+    GrowMate © {new Date().getFullYear()} – mit 💚 gepflegt
+  </div>
+</footer>
+
     </>
   )
 }

@@ -94,10 +94,17 @@ export default function PlantCreateModal({ onClose, onCreated }) {
   }
 
   return (
-    <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-      style={{ background: "rgba(0, 0, 0, 0.5)", zIndex: 1050 }}
-    >
-      <div className="bg-white rounded-4 shadow p-4" style={{ width: "100%", maxWidth: "700px" }}>
+    <div
+  className="position-fixed top-0 start-0 w-100 h-100"
+  style={{
+    background: "rgba(0, 0, 0, 0.5)",
+    zIndex: 1050,
+    overflowY: "auto",     // 👈 das macht's scrollbar
+    padding: "2rem",        // 👈 damit es oben und unten Luft hat
+  }}
+>
+  <div className="bg-white rounded-4 shadow p-4 mx-auto" style={{ maxWidth: "600px" }}>
+
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h5 className="mb-0">🌱 Neue Pflanze anlegen</h5>
           <button className="btn btn-sm btn-close" onClick={onClose} />
