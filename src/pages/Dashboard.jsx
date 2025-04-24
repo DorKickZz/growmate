@@ -2,16 +2,19 @@ import { useEffect, useState } from "react"
 import { supabase } from "../supabaseClient"
 import { format } from "date-fns"
 import { BsDropletFill, BsFlower2 } from "react-icons/bs"
-import { FaFlask } from "react-icons/fa"
+import { FaFlask, FaRecycle } from "react-icons/fa"
 
 export default function Dashboard() {
   const [plants, setPlants] = useState([])
   const [latestPlant, setLatestPlant] = useState(null)
   const [plantsToWater, setPlantsToWater] = useState([])
   const [plantsToFertilize, setPlantsToFertilize] = useState([])
-  const [showWaterList, setShowWaterList] = useState(false)
-  const [showFertilizeList, setShowFertilizeList] = useState(false)
-  const [showAllPlants, setShowAllPlants] = useState(false)
+  const [plantsToRepot, setPlantsToRepot] = useState([])
+
+  const [showWater, setShowWater] = useState(false)
+  const [showFertilize, setShowFertilize] = useState(false)
+  const [showRepot, setShowRepot] = useState(false)
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
     fetchPlants()
@@ -47,20 +50,24 @@ export default function Dashboard() {
           return next <= today
         })
       )
+
+      setPlantsToRepot(
+        data.filter((plant) => plant.repotting_needed === true)
+      )
     }
   }
 
-  const InfoCard = ({ title, value, icon, color, toggle }) => (
-    <div className="col-md-4">
+  const InfoCard = ({ title, value, icon, color, onClick }) => (
+    <div className="col-12 col-sm-6 col-lg-3">
       <div
-        className={`border-start border-${color} border-5 bg-white p-4 rounded shadow-sm`}
-        style={{ cursor: toggle ? "pointer" : "default" }}
-        onClick={toggle}
+        className={`border-start border-${color} border-5 bg-white p-3 p-md-4 rounded shadow-sm mb-3`}
+        style={{ cursor: "pointer" }}
+        onClick={onClick}
       >
         <div className="d-flex justify-content-between align-items-center">
           <div>
-            <h6 className="text-muted fw-normal">{title}</h6>
-            <h4 className="fw-semibold">{value}</h4>
+            <h6 className="text-muted fw-normal mb-1">{title}</h6>
+            <h5 className="fw-semibold m-0">{value}</h5>
           </div>
           <div className={`fs-3 text-${color}`}>{icon}</div>
         </div>
@@ -68,86 +75,91 @@ export default function Dashboard() {
     </div>
   )
 
+  const PlantList = ({ title, plants, getDescription }) => (
+    <div className="mb-4">
+      <h5 className="fw-semibold mb-2">{title}</h5>
+      <ul className="list-group">
+        {plants.map((p) => (
+          <li key={p.id} className="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+            <div className="fw-medium">{p.name}</div>
+            <small className="text-muted mt-1 mt-md-0">{getDescription(p)}</small>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+
   return (
-    <div className="container py-5">
-      <h2 className="mb-4 fw-bold">
+    <div className="container py-4 px-3">
+      <h2 className="mb-4 fw-bold text-center text-md-start">
         <i className="bi bi-bar-chart-line-fill me-2" /> Überblick
       </h2>
 
-      <div className="row g-4 mb-4">
+      <div className="row g-3 mb-4">
         <InfoCard
           title="Gesamtzahl"
           value={plants.length}
           icon={<BsFlower2 />}
           color="success"
-          toggle={() => setShowAllPlants(!showAllPlants)}
+          onClick={() => setShowAll(!showAll)}
         />
         <InfoCard
           title="Gießen nötig"
           value={plantsToWater.length}
           icon={<BsDropletFill />}
           color="info"
-          toggle={() => setShowWaterList(!showWaterList)}
+          onClick={() => setShowWater(!showWater)}
         />
         <InfoCard
           title="Düngen nötig"
           value={plantsToFertilize.length}
           icon={<FaFlask />}
           color="warning"
-          toggle={() => setShowFertilizeList(!showFertilizeList)}
+          onClick={() => setShowFertilize(!showFertilize)}
+        />
+        <InfoCard
+          title="Umtopfen nötig"
+          value={plantsToRepot.length}
+          icon={<FaRecycle />}
+          color="danger"
+          onClick={() => setShowRepot(!showRepot)}
         />
       </div>
 
-      {showAllPlants && (
-        <div className="mb-4">
-          <h5 className="fw-semibold mb-2">🌿 Alle Pflanzen</h5>
-          <ul className="list-group">
-            {plants.map((plant) => (
-              <li className="list-group-item d-flex justify-content-between" key={plant.id}>
-                <span>{plant.name}</span>
-                <small className="text-muted">
-                  {plant.category || "–"} | {plant.location || "–"}
-                </small>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {showAll && (
+        <PlantList
+          title="🌱 Alle Pflanzen"
+          plants={plants}
+          getDescription={(p) => `${p.category || "–"} | ${p.location || "–"}`}
+        />
       )}
 
-      {showWaterList && (
-        <div className="mb-4">
-          <h5 className="fw-semibold mb-2">💧 Überfällige Pflanzen (Gießen)</h5>
-          <ul className="list-group">
-            {plantsToWater.map((plant) => (
-              <li className="list-group-item d-flex justify-content-between" key={plant.id}>
-                {plant.name}
-                <small className="text-muted">
-                  Letztes Gießen: {format(new Date(plant.last_watered), "dd.MM.yyyy")}
-                </small>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {showWater && (
+        <PlantList
+          title="💧 Gießen fällig"
+          plants={plantsToWater}
+          getDescription={(p) => `Zuletzt gegossen: ${format(new Date(p.last_watered), "dd.MM.yyyy")}`}
+        />
       )}
 
-      {showFertilizeList && (
-        <div className="mb-4">
-          <h5 className="fw-semibold mb-2">🧪 Überfällige Pflanzen (Düngen)</h5>
-          <ul className="list-group">
-            {plantsToFertilize.map((plant) => (
-              <li className="list-group-item d-flex justify-content-between" key={plant.id}>
-                {plant.name}
-                <small className="text-muted">
-                  Letztes Düngen: {format(new Date(plant.last_fertilized), "dd.MM.yyyy")}
-                </small>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {showFertilize && (
+        <PlantList
+          title="🧪 Düngung fällig"
+          plants={plantsToFertilize}
+          getDescription={(p) => `Zuletzt gedüngt: ${format(new Date(p.last_fertilized), "dd.MM.yyyy")}`}
+        />
+      )}
+
+      {showRepot && (
+        <PlantList
+          title="🔁 Umtopfen nötig"
+          plants={plantsToRepot}
+          getDescription={(p) => `${p.category || "–"} | ${p.location || "–"}`}
+        />
       )}
 
       {latestPlant && (
-        <div className="bg-white rounded shadow-sm p-4 border-start border-primary border-5">
+        <div className="bg-white rounded shadow-sm p-4 border-start border-primary border-5 mt-4">
           <h5 className="mb-2">
             <span className="me-2 text-primary">🌱</span>
             Zuletzt hinzugefügt

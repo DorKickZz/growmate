@@ -1,66 +1,41 @@
-import { useState } from "react"
+// src/pages/AuthPage.jsx
+import { useEffect, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { supabase } from "../supabaseClient"
-import { useNavigate } from "react-router-dom"
-import "./AuthPage.css"
-
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true)
+  const [isRegister, setIsRegister] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [message, setMessage] = useState("")
+  const [error, setError] = useState("")
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (searchParams.get("register") === "true") {
+      setIsRegister(true)
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setMessage("")
+    setError("")
 
-    if (!email || !password) {
-      setMessage("Bitte fülle alle Felder aus.")
-      return
-    }
+    const { error } = isRegister
+      ? await supabase.auth.signUp({ email, password })
+      : await supabase.auth.signInWithPassword({ email, password })
 
-    if (isLogin) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) return setMessage("Login fehlgeschlagen: " + error.message)
-
-      setMessage("Eingeloggt ✅")
-      setTimeout(() => navigate("/"), 500)
+    if (error) {
+      setError(error.message)
     } else {
-      const { error } = await supabase.auth.signUp({ email, password })
-      if (error) return setMessage("Registrierung fehlgeschlagen: " + error.message)
-
-      setMessage("Registrierung erfolgreich. Bitte bestätige deine E-Mail ✅")
+      navigate("/")
     }
   }
 
   return (
-    <div className="container mt-5" style={{ maxWidth: "420px" }}>
-      <div className="text-center mb-4">
-        <h1 className="fw-bold">🌿 GrowMate</h1>
-        <p className="text-muted small">
-          {isLogin ? "Melde dich an, um deine Pflanzen zu pflegen." : "Erstelle einen Account und starte durch!"}
-        </p>
-      </div>
-
-      <div className="mb-3 d-flex justify-content-center">
-        <button
-          className={`btn ${isLogin ? "btn-success" : "btn-outline-success"} me-2`}
-          onClick={() => setIsLogin(true)}
-        >
-          Login
-        </button>
-        <button
-          className={`btn ${!isLogin ? "btn-success" : "btn-outline-success"}`}
-          onClick={() => setIsLogin(false)}
-        >
-          Registrieren
-        </button>
-      </div>
-
-      {message && <div className="alert alert-info text-center">{message}</div>}
-
-      <form onSubmit={handleSubmit}>
+    <div className="container py-5">
+      <h2 className="fw-bold mb-4 text-center">{isRegister ? "Registrieren" : "Login"}</h2>
+      <form onSubmit={handleSubmit} className="mx-auto" style={{ maxWidth: "400px" }}>
         <div className="mb-3">
           <label className="form-label">E-Mail</label>
           <input
@@ -71,8 +46,7 @@ export default function AuthPage() {
             required
           />
         </div>
-
-        <div className="mb-4">
+        <div className="mb-3">
           <label className="form-label">Passwort</label>
           <input
             type="password"
@@ -83,9 +57,37 @@ export default function AuthPage() {
           />
         </div>
 
-        <button className="btn btn-success w-100">
-          {isLogin ? "Einloggen" : "Registrieren"}
+        {error && <div className="alert alert-danger">{error}</div>}
+
+        <button type="submit" className="btn btn-success w-100">
+          {isRegister ? "Registrieren" : "Login"}
         </button>
+
+        <div className="text-center mt-3">
+          {isRegister ? (
+            <span>
+              Bereits registriert?{" "}
+              <button
+                type="button"
+                className="btn btn-link p-0"
+                onClick={() => setIsRegister(false)}
+              >
+                Login
+              </button>
+            </span>
+          ) : (
+            <span>
+              Noch kein Account?{" "}
+              <button
+                type="button"
+                className="btn btn-link p-0"
+                onClick={() => setIsRegister(true)}
+              >
+                Registrieren
+              </button>
+            </span>
+          )}
+        </div>
       </form>
     </div>
   )

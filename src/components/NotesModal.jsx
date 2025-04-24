@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react"
 import { supabase } from "../supabaseClient"
 
-export default function NotesModal({ plant, onClose }) {
+export default function NotesModal({ plant, onClose, onSaved }) {
   const [duengeeintraege, setDuengeeintraege] = useState([])
+  const [newNote, setNewNote] = useState(plant.notes || "")
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     const fetchEntries = async () => {
@@ -18,6 +20,22 @@ export default function NotesModal({ plant, onClose }) {
     fetchEntries()
   }, [plant.id])
 
+  const handleSave = async () => {
+    setSaving(true)
+    const { error } = await supabase
+      .from("pflanzen")
+      .update({ notes: newNote })
+      .eq("id", plant.id)
+
+    setSaving(false)
+    if (!error) {
+      onSaved?.()
+      onClose()
+    } else {
+      console.error("Fehler beim Speichern der Notiz:", error)
+    }
+  }
+
   return (
     <div
       className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
@@ -29,12 +47,23 @@ export default function NotesModal({ plant, onClose }) {
           <button className="btn btn-sm btn-close" onClick={onClose} />
         </div>
 
-        {plant.notes && (
-          <div className="mb-3">
-            <strong>Notizen:</strong>
-            <p className="mb-0">{plant.notes}</p>
-          </div>
-        )}
+        <div className="mb-3">
+          <label className="form-label fw-bold">📝 Notiz</label>
+          <textarea
+            className="form-control"
+            rows="3"
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            placeholder="Hier kannst du eine neue Notiz eintragen …"
+          />
+        </div>
+
+        <div className="d-flex justify-content-end mb-4">
+          <button className="btn btn-secondary me-2" onClick={onClose}>Abbrechen</button>
+          <button className="btn btn-success" onClick={handleSave} disabled={saving}>
+            {saving ? "Speichert…" : "Speichern"}
+          </button>
+        </div>
 
         <div>
           <strong>Letzte Düngungen:</strong>

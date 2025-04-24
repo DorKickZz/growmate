@@ -8,7 +8,7 @@ export default function LandingPage() {
         <h1 className="logo">🌿 GrowMate</h1>
         <div>
           <Link to="/auth" className="btn btn-outline-success me-2">Login</Link>
-          <Link to="/auth" className="btn btn-success">Registrieren</Link>
+          <Link to="/auth?register=true" className="btn btn-success">Registrieren</Link>
         </div>
       </header>
 
