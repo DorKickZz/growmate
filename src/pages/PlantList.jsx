@@ -112,9 +112,10 @@ export default function PlantList() {
             {filteredAndSortedPlants.slice(0, visibleCount).map((plant) => (
               <div className="col-12 col-sm-6 col-md-4" key={plant.id}>
                 <div className="card p-3 h-100 shadow-sm d-flex flex-column">
-                  {(plant.thumbnail_url || plant.photo_url) && (
-                    <img
-                      src={plant.thumbnail_url || plant.photo_url}
+                {plant.photo_url && (
+  <img
+    src={plant.photo_url}
+
                       alt={plant.name}
                       className="img-thumbnail mb-2"
                       loading="lazy"

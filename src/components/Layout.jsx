@@ -17,6 +17,11 @@ export default function Layout({ children, onLogout }) {
     fetchUser();
   }, []);
 
+  // Funktion, um das Menü zu schließen, wenn ein Link angeklickt wird
+  const handleLinkClick = () => {
+    setIsMenuOpen(false);
+  };
+
   return (
     <>
       <header className="layout-header">
@@ -29,19 +34,19 @@ export default function Layout({ children, onLogout }) {
 
         {/* Mobile Navigation */}
         <nav className={`nav-links ${isMenuOpen ? "open" : ""}`}>
-          <Link to="/" className={location.pathname === "/" ? "active" : ""}>
+          <Link to="/" className={location.pathname === "/" ? "active" : ""} onClick={handleLinkClick}>
             <FaHome /> Dashboard
           </Link>
-          <Link to="/kalender" className={location.pathname === "/kalender" ? "active" : ""}>
+          <Link to="/kalender" className={location.pathname === "/kalender" ? "active" : ""} onClick={handleLinkClick}>
             <FaCalendarAlt /> Kalender
           </Link>
-          <Link to="/pflanzen" className={location.pathname === "/pflanzen" ? "active" : ""}>
+          <Link to="/pflanzen" className={location.pathname === "/pflanzen" ? "active" : ""} onClick={handleLinkClick}>
             <FaLeaf /> Meine Pflanzen
           </Link>
-          <Link to="/duengemittel" className={location.pathname === "/duengemittel" ? "active" : ""}>
+          <Link to="/duengemittel" className={location.pathname === "/duengemittel" ? "active" : ""} onClick={handleLinkClick}>
             <FaFlask /> Düngemittel
           </Link>
-          <Link to="/wunschliste" className={location.pathname === "/wunschliste" ? "active" : ""}>
+          <Link to="/wunschliste" className={location.pathname === "/wunschliste" ? "active" : ""} onClick={handleLinkClick}>
             <FaGift /> Wunschliste
           </Link>
           <span className="user-email">{userEmail}</span>

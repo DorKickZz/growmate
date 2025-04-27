@@ -1,6 +1,45 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
-import { createThumbnail } from "../utils/imageUtils"; // NEU!
+import { createThumbnail } from "../utils/imageUtils";
+import EXIF from "exif-js"; // Für Exif Korrektur
+
+// Hilfsfunktion zur Bildorientierung
+const fixImageOrientation = (image) => {
+  return new Promise((resolve) => {
+    EXIF.getData(image, function () {
+      const orientation = EXIF.getTag(this, "Orientation");
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      switch (orientation) {
+        case 6: // 90° im Uhrzeigersinn
+          canvas.width = image.height;
+          canvas.height = image.width;
+          ctx.rotate(90 * Math.PI / 180);
+          ctx.drawImage(image, 0, -image.height);
+          break;
+        case 3: // 180°
+          canvas.width = image.width;
+          canvas.height = image.height;
+          ctx.rotate(Math.PI);
+          ctx.drawImage(image, -image.width, -image.height);
+          break;
+        case 8: // 270°
+          canvas.width = image.height;
+          canvas.height = image.width;
+          ctx.rotate(-90 * Math.PI / 180);
+          ctx.drawImage(image, -image.width, 0);
+          break;
+        default:
+          canvas.width = image.width;
+          canvas.height = image.height;
+          ctx.drawImage(image, 0, 0);
+      }
+
+      resolve(canvas.toDataURL("image/jpeg"));
+    });
+  });
+};
 
 export default function PlantEditModal({ plant, onClose, onSave }) {
   const [editedPlant, setEditedPlant] = useState({ ...plant });
@@ -32,35 +71,49 @@ export default function PlantEditModal({ plant, onClose, onSave }) {
       const originalPath = `originals/${plant.id}_${timestamp}.jpg`;
       const thumbnailPath = `thumbnails/${plant.id}_${timestamp}_thumb.jpg`;
 
-      // Original hochladen
-      const { error: originalError } = await supabase.storage
-        .from("pflanzenfotos")
-        .upload(originalPath, newPhoto, { upsert: true });
+      // Bild orientieren
+      const imageUrl = URL.createObjectURL(newPhoto);
+      const img = new Image();
+      img.src = imageUrl;
 
-      if (originalError) {
-        console.error("Upload Fehler Original:", originalError);
-      } else {
-        const { publicUrl: originalPublicUrl } = supabase.storage
-          .from("pflanzenfotos")
-          .getPublicUrl(originalPath).data;
-        photoUrl = originalPublicUrl;
-      }
+      await new Promise((resolve) => {
+        img.onload = async () => {
+          const correctedImageUrl = await fixImageOrientation(img);
+          const correctedImageBlob = await fetch(correctedImageUrl).then((res) => res.blob());
 
-      // Thumbnail erstellen und hochladen
-      const thumbnailBlob = await createThumbnail(newPhoto);
+          // Original hochladen
+          const { error: originalError } = await supabase.storage
+            .from("pflanzenfotos")
+            .upload(originalPath, correctedImageBlob, { upsert: true });
 
-      const { error: thumbError } = await supabase.storage
-        .from("pflanzenfotos")
-        .upload(thumbnailPath, thumbnailBlob, { upsert: true });
+          if (originalError) {
+            console.error("Upload Fehler Original:", originalError);
+          } else {
+            const { publicUrl: originalPublicUrl } = supabase.storage
+              .from("pflanzenfotos")
+              .getPublicUrl(originalPath).data;
+            photoUrl = originalPublicUrl;
+          }
 
-      if (thumbError) {
-        console.error("Upload Fehler Thumbnail:", thumbError);
-      } else {
-        const { publicUrl: thumbPublicUrl } = supabase.storage
-          .from("pflanzenfotos")
-          .getPublicUrl(thumbnailPath).data;
-        thumbnailUrl = thumbPublicUrl;
-      }
+          // Thumbnail erstellen und hochladen
+          const thumbnailBlob = await createThumbnail(newPhoto);
+
+          const { error: thumbError } = await supabase.storage
+            .from("pflanzenfotos")
+            .upload(thumbnailPath, thumbnailBlob, { upsert: true });
+
+          if (thumbError) {
+            console.error("Upload Fehler Thumbnail:", thumbError);
+          } else {
+            const { publicUrl: thumbPublicUrl } = supabase.storage
+              .from("pflanzenfotos")
+              .getPublicUrl(thumbnailPath).data;
+            thumbnailUrl = thumbPublicUrl;
+          }
+
+          resolve();
+        };
+      });
     }
 
     await onSave(
@@ -76,19 +129,8 @@ export default function PlantEditModal({ plant, onClose, onSave }) {
   if (!plant) return null;
 
   return (
-    <div
-      className="position-fixed top-0 start-0 w-100 h-100"
-      style={{
-        background: "rgba(0, 0, 0, 0.5)",
-        zIndex: 1050,
-        overflowY: "auto",
-        padding: "2rem",
-      }}
-    >
-      <div
-        className="bg-white rounded-4 shadow p-4 mx-auto"
-        style={{ maxWidth: "600px" }}
-      >
+    <div className="position-fixed top-0 start-0 w-100 h-100" style={{ background: "rgba(0,0,0,0.5)", zIndex: 1050, overflowY: "auto", padding: "2rem" }}>
+      <div className="bg-white rounded-4 shadow p-4 mx-auto" style={{ maxWidth: "600px" }}>
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h5 className="mb-0">📝 Pflanze bearbeiten</h5>
           <button className="btn btn-sm btn-close" onClick={onClose} />
@@ -130,9 +172,7 @@ export default function PlantEditModal({ plant, onClose, onSave }) {
             type="number"
             className="form-control"
             value={editedPlant.water_interval || ""}
-            onChange={(e) =>
-              handleChange("water_interval", parseInt(e.target.value) || "")
-            }
+            onChange={(e) => handleChange("water_interval", parseInt(e.target.value) || "")}
           />
         </div>
 
@@ -142,9 +182,7 @@ export default function PlantEditModal({ plant, onClose, onSave }) {
             type="number"
             className="form-control"
             value={editedPlant.fertilizer_interval || ""}
-            onChange={(e) =>
-              handleChange("fertilizer_interval", parseInt(e.target.value) || "")
-            }
+            onChange={(e) => handleChange("fertilizer_interval", parseInt(e.target.value) || "")}
           />
         </div>
 
