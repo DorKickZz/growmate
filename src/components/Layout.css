@@ -9,6 +9,7 @@
   position: sticky;
   top: 0;
   z-index: 1000;
+  justify-content: space-between; /* Für den Abstand zwischen Logo und Navigation */
 }
 
 /* --- Logo / Branding --- */
@@ -70,6 +71,9 @@
   border: none;
   font-size: 30px;
   cursor: pointer;
+  position: absolute;
+  left: 1rem; /* Hamburger Button nach links verschieben */
+  top: 1rem;  /* Etwas Abstand vom oberen Rand */
 }
 
 /* --- Mobile Styles --- */
