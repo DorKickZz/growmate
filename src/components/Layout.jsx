@@ -1,12 +1,13 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { useEffect, useState } from "react";
-import { FaHome, FaCalendarAlt, FaLeaf, FaFlask, FaGift, FaSignOutAlt } from "react-icons/fa";
+import { FaHome, FaCalendarAlt, FaLeaf, FaFlask, FaGift } from "react-icons/fa";
 import "./Layout.css";
 
 export default function Layout({ children, onLogout }) {
   const location = useLocation();
   const [userEmail, setUserEmail] = useState("");
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // Zustand für das Öffnen des Menüs
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -18,37 +19,34 @@ export default function Layout({ children, onLogout }) {
 
   return (
     <>
-      <header className="layout-header shadow-sm bg-white p-2">
-        <div className="d-flex justify-content-between align-items-center container">
-          {/* Logo */}
-          <h4 className="logo">🌿 GrowMate</h4>
+      <header className="layout-header">
+        <h4 className="logo">🌿 GrowMate</h4>
 
+        {/* Hamburger-Icon */}
+        <button className="menu-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          ☰
+        </button>
 
-          {/* Navigation */}
-          <nav className="nav-links d-flex align-items-center gap-3">
-            <Link to="/" className={location.pathname === "/" ? "active" : ""}>
-              <FaHome className="me-1" /> Dashboard
-            </Link>
-            <Link to="/kalender" className={location.pathname === "/kalender" ? "active" : ""}>
-              <FaCalendarAlt className="me-1" /> Kalender
-            </Link>
-            <Link to="/pflanzen" className={location.pathname === "/pflanzen" ? "active" : ""}>
-              <FaLeaf className="me-1" /> Meine Pflanzen
-            </Link>
-            <Link to="/duengemittel" className={location.pathname === "/duengemittel" ? "active" : ""}>
-              <FaFlask className="me-1" /> Düngemittel
-            </Link>
-            <Link to="/wunschliste" className={location.pathname === "/wunschliste" ? "active" : ""}>
-              <FaGift className="me-1" /> Wunschliste
-            </Link>
-
-            {/* User-Email + Logout */}
-            <span className="user-email text-muted small">{userEmail}</span>
-            <button className="btn btn-danger btn-sm d-flex align-items-center gap-1" onClick={onLogout}>
-              <FaSignOutAlt /> Logout
-            </button>
-          </nav>
-        </div>
+        {/* Mobile Navigation */}
+        <nav className={`nav-links ${isMenuOpen ? "open" : ""}`}>
+          <Link to="/" className={location.pathname === "/" ? "active" : ""}>
+            <FaHome /> Dashboard
+          </Link>
+          <Link to="/kalender" className={location.pathname === "/kalender" ? "active" : ""}>
+            <FaCalendarAlt /> Kalender
+          </Link>
+          <Link to="/pflanzen" className={location.pathname === "/pflanzen" ? "active" : ""}>
+            <FaLeaf /> Meine Pflanzen
+          </Link>
+          <Link to="/duengemittel" className={location.pathname === "/duengemittel" ? "active" : ""}>
+            <FaFlask /> Düngemittel
+          </Link>
+          <Link to="/wunschliste" className={location.pathname === "/wunschliste" ? "active" : ""}>
+            <FaGift /> Wunschliste
+          </Link>
+          <span className="user-email">{userEmail}</span>
+          <button className="btn btn-sm btn-danger" onClick={onLogout}>Logout</button>
+        </nav>
       </header>
 
       <main className="container py-4">{children}</main>
