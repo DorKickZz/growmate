@@ -95,9 +95,22 @@ export default function CalendarPage() {
               style={{ minHeight: "90px" }}
             >
               <div className="fw-bold">{d.date.date()}</div>
-              {d.events.map((e, idx) => (
-                <div key={idx} style={{ fontSize: "0.75rem" }}>{e.label}</div>
-              ))}
+              <>
+  {d.events.slice(0, 2).map((e, idx) => (
+    <div key={idx} style={{ fontSize: "0.75rem" }}>{e.label}</div>
+  ))}
+
+  {d.events.length > 2 && (
+    <div
+      className="text-primary small mt-1"
+      style={{ cursor: "pointer", textDecoration: "underline" }}
+      onClick={() => alert(`Weitere Pflanzen:\n\n${d.events.slice(2).map(ev => ev.label).join("\n")}`)}
+    >
+      +{d.events.length - 2} weitere
+    </div>
+  )}
+</>
+
             </div>
           ))}
         </div>

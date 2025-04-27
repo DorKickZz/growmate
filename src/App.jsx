@@ -8,9 +8,11 @@ import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import PlantList from "./pages/PlantList";
 import CalendarPage from "./pages/CalendarPage";
-import Wishlist from "./pages/Wishlist"; // 👉 NEU IMPORTIEREN
+import Wishlist from "./pages/Wishlist"; 
 import Impressum from "./pages/Impressum";
 import Datenschutz from "./pages/Datenschutz";
+import Fertilizers from "./pages/Fertilizers"   // ➡️ Neu hinzufügen
+
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -54,6 +56,7 @@ export default function App() {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/pflanzen" element={<PlantList />} />
                   <Route path="/kalender" element={<CalendarPage />} />
+                  <Route path="/duengemittel" element={<Fertilizers />} />
                   <Route path="/wunschliste" element={<Wishlist />} /> {/* 👉 NEUE ROUTE */}
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>

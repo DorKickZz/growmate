@@ -23,6 +23,8 @@ export default function Layout({ children, onLogout }) {
           <Link to="/" className={location.pathname === "/" ? "active" : ""}>Dashboard</Link>
           <Link to="/kalender" className={location.pathname === "/kalender" ? "active" : ""}>Kalender</Link>
           <Link to="/pflanzen" className={location.pathname === "/pflanzen" ? "active" : ""}>Meine Pflanzen</Link>
+          <Link to="/duengemittel" className={location.pathname === "/duengemittel" ? "active" : ""}>Düngemittel</Link>
+
           <Link to="/wunschliste" className={location.pathname === "/wunschliste" ? "active" : ""}>Wunschliste</Link>
           <span className="user-email">{userEmail}</span>
           <button className="btn btn-sm btn-danger" onClick={onLogout}>Logout</button>

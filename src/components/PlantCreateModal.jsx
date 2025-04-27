@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { supabase } from "../supabaseClient"
 import ImageCropModal from "./ImageCropModal"
+import { createThumbnail } from "../utils/imageUtils"; // NEU!
 
 export default function PlantCreateModal({ onClose, onCreated }) {
   const [formData, setFormData] = useState({
@@ -23,24 +24,40 @@ export default function PlantCreateModal({ onClose, onCreated }) {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleImageUpload = async (file, plantId) => {
-    const fileExt = file.name.split(".").pop()
-    const filePath = `${plantId}.${fileExt}`
+  const handleImageUpload = async (file, thumbnailBlob, plantId) => {
+    const timestamp = Date.now();
+    const originalPath = `originals/${plantId}_${timestamp}.jpg`;
+    const thumbnailPath = `thumbnails/${plantId}_${timestamp}_thumb.jpg`;
 
-    const { error } = await supabase.storage
+    // Originalbild hochladen
+    const { error: originalError } = await supabase.storage
       .from("pflanzenfotos")
-      .upload(filePath, file, { upsert: true })
+      .upload(originalPath, file, { upsert: true });
 
-    if (error) {
-      console.error("Upload error:", error)
-      return null
+    if (originalError) {
+      console.error("Upload Original error:", originalError);
+      return null;
     }
 
-    const { data: publicUrlData } = supabase.storage
+    // Thumbnail hochladen
+    const { error: thumbError } = await supabase.storage
       .from("pflanzenfotos")
-      .getPublicUrl(filePath)
+      .upload(thumbnailPath, thumbnailBlob, { upsert: true });
 
-    return publicUrlData.publicUrl
+    if (thumbError) {
+      console.error("Upload Thumbnail error:", thumbError);
+      return null;
+    }
+
+    // URLs holen
+    const { publicUrl: originalUrl } = supabase.storage
+      .from("pflanzenfotos")
+      .getPublicUrl(originalPath).data;
+    const { publicUrl: thumbnailUrl } = supabase.storage
+      .from("pflanzenfotos")
+      .getPublicUrl(thumbnailPath).data;
+
+    return { originalUrl, thumbnailUrl };
   }
 
   const handleSubmit = async () => {
@@ -74,15 +91,18 @@ export default function PlantCreateModal({ onClose, onCreated }) {
 
       if (insertError) {
         console.error("Insert error:", JSON.stringify(insertError, null, 2))
-
         return
       }
 
-      let photoUrl = null
       if (imageFile) {
-        photoUrl = await handleImageUpload(imageFile, data.id)
-        if (photoUrl) {
-          await supabase.from("pflanzen").update({ photo_url: photoUrl }).eq("id", data.id)
+        const thumbnailBlob = await createThumbnail(imageFile);
+        const uploadResult = await handleImageUpload(imageFile, thumbnailBlob, data.id);
+
+        if (uploadResult) {
+          await supabase.from("pflanzen").update({
+            photo_url: uploadResult.originalUrl,
+            thumbnail_url: uploadResult.thumbnailUrl,
+          }).eq("id", data.id);
         }
       }
 
@@ -95,16 +115,15 @@ export default function PlantCreateModal({ onClose, onCreated }) {
 
   return (
     <div
-  className="position-fixed top-0 start-0 w-100 h-100"
-  style={{
-    background: "rgba(0, 0, 0, 0.5)",
-    zIndex: 1050,
-    overflowY: "auto",     // 👈 das macht's scrollbar
-    padding: "2rem",        // 👈 damit es oben und unten Luft hat
-  }}
->
-  <div className="bg-white rounded-4 shadow p-4 mx-auto" style={{ maxWidth: "600px" }}>
-
+      className="position-fixed top-0 start-0 w-100 h-100"
+      style={{
+        background: "rgba(0, 0, 0, 0.5)",
+        zIndex: 1050,
+        overflowY: "auto",
+        padding: "2rem",
+      }}
+    >
+      <div className="bg-white rounded-4 shadow p-4 mx-auto" style={{ maxWidth: "600px" }}>
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h5 className="mb-0">🌱 Neue Pflanze anlegen</h5>
           <button className="btn btn-sm btn-close" onClick={onClose} />

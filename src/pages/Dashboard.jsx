@@ -75,17 +75,44 @@ export default function Dashboard() {
     </div>
   )
 
+  const handleMarkRepotted = async (plantId) => {
+    const { error } = await supabase
+      .from("pflanzen")
+      .update({ repotting_needed: false })
+      .eq("id", plantId);
+  
+    if (!error) {
+      fetchPlants(); // neu laden!
+    }
+  };
+  
+
   const PlantList = ({ title, plants, getDescription }) => (
     <div className="mb-4">
       <h5 className="fw-semibold mb-2">{title}</h5>
       <ul className="list-group">
-        {plants.map((p) => (
-          <li key={p.id} className="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-            <div className="fw-medium">{p.name}</div>
-            <small className="text-muted mt-1 mt-md-0">{getDescription(p)}</small>
-          </li>
-        ))}
-      </ul>
+  {plants.map((p) => (
+    <li
+      key={p.id}
+      className="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2"
+    >
+      <div className="fw-medium">{p.name}</div>
+      <div className="d-flex flex-column flex-md-row align-items-md-center gap-2">
+        <small className="text-muted">{getDescription(p)}</small>
+        {/* Nur wenn es um Umtopfen geht */}
+        {title.includes("Umtopfen") && (
+          <button
+            className="btn btn-sm btn-outline-success"
+            onClick={() => handleMarkRepotted(p.id)}
+          >
+            ✅ Umgetopft
+          </button>
+        )}
+      </div>
+    </li>
+  ))}
+</ul>
+
     </div>
   )
 

@@ -1,10 +1,10 @@
-// src/pages/PlantList.jsx
 import { useEffect, useState } from "react"
 import { supabase } from "../supabaseClient"
 import PlantCreateModal from "../components/PlantCreateModal"
 import PlantEditModal from "../components/PlantEditModal"
 import FertilizeModal from "../components/FertilizeModal"
 import NotesModal from "../components/NotesModal"
+import { FaExclamationCircle } from "react-icons/fa";
 
 export default function PlantList() {
   const [plants, setPlants] = useState([])
@@ -16,6 +16,7 @@ export default function PlantList() {
 
   const [sortField, setSortField] = useState("name")
   const [searchQuery, setSearchQuery] = useState("")
+  const [visibleCount, setVisibleCount] = useState(9);
 
   useEffect(() => {
     const fetchUserAndPlants = async () => {
@@ -50,10 +51,10 @@ export default function PlantList() {
       return
     }
 
-    const { id, name, category, location, water_interval, fertilizer_interval, photo_url } = plant
+    const { id, name, category, location, water_interval, fertilizer_interval, photo_url, thumbnail_url } = plant
     await supabase
       .from("pflanzen")
-      .update({ name, category, location, water_interval, fertilizer_interval, photo_url })
+      .update({ name, category, location, water_interval, fertilizer_interval, photo_url, thumbnail_url })
       .eq("id", id)
     setEditingPlant(null)
     refreshPlants()
@@ -106,74 +107,109 @@ export default function PlantList() {
       {filteredAndSortedPlants.length === 0 ? (
         <p className="text-muted">Keine Pflanzen gefunden.</p>
       ) : (
-        <div className="row g-4">
-          {filteredAndSortedPlants.map((plant) => (
-            <div className="col-12 col-sm-6 col-md-4" key={plant.id}>
-              <div className="card p-3 h-100 shadow-sm d-flex flex-column">
-                {plant.photo_url && (
-                  <img
-                    src={plant.photo_url}
-                    alt={plant.name}
-                    className="img-thumbnail mb-2"
-                    style={{ cursor: "zoom-in", maxHeight: "150px", objectFit: "cover" }}
-                    data-bs-toggle="modal"
-                    data-bs-target={`#plantModal-${plant.id}`}
-                  />
-                )}
-                <h5 className="fw-semibold">{plant.name}</h5>
-                <p className="text-secondary small mb-2">
-                  Kategorie: <strong>{plant.category || "-"}</strong><br />
-                  Standort: {plant.location || "-"}
-                </p>
+        <>
+          <div className="row g-4">
+            {filteredAndSortedPlants.slice(0, visibleCount).map((plant) => (
+              <div className="col-12 col-sm-6 col-md-4" key={plant.id}>
+                <div className="card p-3 h-100 shadow-sm d-flex flex-column">
+                  {(plant.thumbnail_url || plant.photo_url) && (
+                    <img
+                      src={plant.thumbnail_url || plant.photo_url}
+                      alt={plant.name}
+                      className="img-thumbnail mb-2"
+                      loading="lazy"
+                      style={{ cursor: "zoom-in", maxHeight: "150px", objectFit: "cover" }}
+                      data-bs-toggle="modal"
+                      data-bs-target={`#plantModal-${plant.id}`}
+                    />
+                  )}
+                  <h5 className="fw-semibold">
+                    {plant.name}
+                    {plant.repotting_needed && (
+                      <FaExclamationCircle
+                        style={{
+                          color: "orange",
+                          marginLeft: "8px",
+                          verticalAlign: "middle",
+                        }}
+                        title="Umtopfen nötig"
+                      />
+                    )}
+                  </h5>
 
-                <div className="d-flex gap-2 flex-wrap mt-2">
-                  <button className="btn btn-sm btn-outline-primary" onClick={() => markAction(plant.id, "last_watered")}>
-                    💧 Gegossen
-                  </button>
-                  <button className="btn btn-sm btn-outline-success" onClick={() => setFertilizingPlant(plant)}>
-                    🧪 Gedüngt
-                  </button>
-                  <button className="btn btn-sm btn-outline-warning" onClick={() => markAction(plant.id, "repotting_needed", true)}>
-                    🔁 Umtopfen nötig
-                  </button>
-                </div>
-
-                <div className="d-flex gap-2 mt-3 flex-wrap">
-                  <button className="btn btn-sm btn-outline-secondary" onClick={() => setViewingNotes(plant)}>
-                    💬 Notiz
-                  </button>
-                  <button className="btn btn-sm btn-outline-primary" onClick={() => setEditingPlant(plant)}>
-                    📝 Bearbeiten
-                  </button>
-                  <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(plant.id)}>
-                    🗑️ Löschen
-                  </button>
-                </div>
-
-                {plant.notes && (
-                  <p className="text-muted small mt-2">
-                    💬 Letzte Notiz: <em>{plant.notes}</em>
+                  <p className="text-secondary small mb-2">
+                    Kategorie: <strong>{plant.category || "-"}</strong><br />
+                    Standort: {plant.location || "-"}
                   </p>
-                )}
-              </div>
 
-              {/* Modal für großes Bild */}
-              <div className="modal fade" id={`plantModal-${plant.id}`} tabIndex="-1" aria-hidden="true">
-                <div className="modal-dialog modal-dialog-centered modal-lg">
-                  <div className="modal-content bg-dark text-white border-0">
-                    <div className="modal-header border-0">
-                      <h5 className="modal-title">{plant.name}</h5>
-                      <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" />
-                    </div>
-                    <div className="modal-body text-center">
-                      <img src={plant.photo_url} alt={plant.name} className="img-fluid rounded shadow" style={{ maxHeight: "75vh" }} />
+                  <div className="d-flex gap-2 flex-wrap mt-2">
+                    <button className="btn btn-sm btn-outline-primary" onClick={() => markAction(plant.id, "last_watered")}>
+                      💧 Gegossen
+                    </button>
+                    <button className="btn btn-sm btn-outline-success" onClick={() => setFertilizingPlant(plant)}>
+                      🧪 Gedüngt
+                    </button>
+                    <button className="btn btn-sm btn-outline-warning" onClick={() => markAction(plant.id, "repotting_needed", true)}>
+                      🔁 Umtopfen nötig
+                    </button>
+                    <button className="btn btn-sm btn-outline-success" onClick={() => markAction(plant.id, "repotting_needed", false)}>
+                      ✅ Umtopfen erledigt
+                    </button>
+                  </div>
+
+                  <div className="d-flex gap-2 mt-3 flex-wrap">
+                    <button className="btn btn-sm btn-outline-secondary" onClick={() => setViewingNotes(plant)}>
+                      💬 Notiz
+                    </button>
+                    <button className="btn btn-sm btn-outline-primary" onClick={() => setEditingPlant(plant)}>
+                      📝 Bearbeiten
+                    </button>
+                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(plant.id)}>
+                      🗑️ Löschen
+                    </button>
+                  </div>
+
+                  {plant.notes && (
+                    <p className="text-muted small mt-2">
+                      💬 Letzte Notiz: <em>{plant.notes}</em>
+                    </p>
+                  )}
+                </div>
+
+                {/* Modal für großes Bild */}
+                <div className="modal fade" id={`plantModal-${plant.id}`} tabIndex="-1" aria-hidden="true">
+                  <div className="modal-dialog modal-dialog-centered modal-lg">
+                    <div className="modal-content bg-dark text-white border-0">
+                      <div className="modal-header border-0">
+                        <h5 className="modal-title">{plant.name}</h5>
+                        <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" />
+                      </div>
+                      <div className="modal-body text-center">
+                        <img
+                          src={plant.photo_url}
+                          alt={plant.name}
+                          className="img-fluid rounded shadow"
+                          style={{ maxHeight: "75vh" }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+
+          {visibleCount < filteredAndSortedPlants.length && (
+            <div className="text-center mt-4">
+              <button
+                className="btn btn-outline-primary"
+                onClick={() => setVisibleCount(visibleCount + 9)}
+              >
+                🔽 Mehr Pflanzen laden
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {/* Modals */}

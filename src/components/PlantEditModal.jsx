@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
+import { createThumbnail } from "../utils/imageUtils"; // NEU!
 
 export default function PlantEditModal({ plant, onClose, onSave }) {
   const [editedPlant, setEditedPlant] = useState({ ...plant });
@@ -24,28 +25,49 @@ export default function PlantEditModal({ plant, onClose, onSave }) {
 
   const handleSave = async () => {
     let photoUrl = editedPlant.photo_url;
+    let thumbnailUrl = editedPlant.thumbnail_url;
 
     if (newPhoto) {
-      const fileExt = newPhoto.name.split(".").pop();
-      const fileName = `${plant.id}_${Date.now()}.${fileExt}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("pflanzenfotos")
-        .upload(fileName, newPhoto, { cacheControl: "3600", upsert: true });
+      const timestamp = Date.now();
+      const originalPath = `originals/${plant.id}_${timestamp}.jpg`;
+      const thumbnailPath = `thumbnails/${plant.id}_${timestamp}_thumb.jpg`;
 
-      if (!uploadError) {
-        const { data: publicUrlData } = supabase.storage
-          .from("pflanzenfotos")
-          .getPublicUrl(fileName);
-        photoUrl = publicUrlData.publicUrl;
+      // Original hochladen
+      const { error: originalError } = await supabase.storage
+        .from("pflanzenfotos")
+        .upload(originalPath, newPhoto, { upsert: true });
+
+      if (originalError) {
+        console.error("Upload Fehler Original:", originalError);
       } else {
-        console.error("Upload Fehler:", uploadError);
+        const { publicUrl: originalPublicUrl } = supabase.storage
+          .from("pflanzenfotos")
+          .getPublicUrl(originalPath).data;
+        photoUrl = originalPublicUrl;
+      }
+
+      // Thumbnail erstellen und hochladen
+      const thumbnailBlob = await createThumbnail(newPhoto);
+
+      const { error: thumbError } = await supabase.storage
+        .from("pflanzenfotos")
+        .upload(thumbnailPath, thumbnailBlob, { upsert: true });
+
+      if (thumbError) {
+        console.error("Upload Fehler Thumbnail:", thumbError);
+      } else {
+        const { publicUrl: thumbPublicUrl } = supabase.storage
+          .from("pflanzenfotos")
+          .getPublicUrl(thumbnailPath).data;
+        thumbnailUrl = thumbPublicUrl;
       }
     }
 
     await onSave(
       {
         ...editedPlant,
-        photo_url: photoUrl, // neue oder alte URL mitgeben!
+        photo_url: photoUrl,
+        thumbnail_url: thumbnailUrl,
       },
       true
     );
@@ -128,7 +150,12 @@ export default function PlantEditModal({ plant, onClose, onSave }) {
 
         <div className="mb-3">
           <label className="form-label">Neues Foto (optional)</label>
-          <input className="form-control" type="file" accept="image/*" onChange={handlePhotoChange} />
+          <input
+            className="form-control"
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoChange}
+          />
         </div>
 
         <div className="d-flex justify-content-end">
