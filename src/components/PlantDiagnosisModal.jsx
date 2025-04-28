@@ -10,10 +10,25 @@ export default function PlantDiagnosisModal({ onClose }) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result.split(",")[1]); // Nur Base64-Teil nehmen
+      reader.onload = async () => {
+        const img = new Image();
+        img.src = reader.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          // Export als PNG
+          const pngBase64 = canvas.toDataURL('image/png').split(',')[1];
+          resolve(pngBase64);
+        };
+        img.onerror = (error) => reject(error);
+      };
       reader.onerror = (error) => reject(error);
     });
   };
+  
 
   const handlePhotoChange = (e) => {
     if (e.target.files && e.target.files[0]) {
