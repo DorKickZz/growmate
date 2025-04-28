@@ -187,6 +187,17 @@ export default function PlantEditModal({ plant, onClose, onSave }) {
         </div>
 
         <div className="mb-3">
+  <label className="form-label">Zuletzt umgetopft am</label>
+  <input
+    type="date"
+    className="form-control"
+    value={editedPlant.last_repotted ? editedPlant.last_repotted.substring(0, 10) : ""}
+    onChange={(e) => handleChange("last_repotted", e.target.value)}
+  />
+</div>
+
+
+        <div className="mb-3">
           <label className="form-label">Neues Foto (optional)</label>
           <input
             className="form-control"
