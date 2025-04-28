@@ -5,6 +5,8 @@ export default function PlantDiagnosisModal({ onClose }) {
   const [description, setDescription] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Pflanze wird untersucht… 🌿");
+
 
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
@@ -44,6 +46,11 @@ export default function PlantDiagnosisModal({ onClose }) {
 
     setLoading(true);
     setDiagnosis("");
+    setLoadingMessage("Foto wird hochgeladen und Modell gestartet… ⏳");
+
+    console.warn("Keine Bildbeschreibung erhalten oder Modell schläft.");
+setLoadingMessage("Das Modell startet gerade oder konnte das Bild nicht analysieren. Wir versuchen es trotzdem anhand deiner Beschreibung...");
+
 
     try {
       let imageDescription = "";
@@ -165,11 +172,12 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
         </div>
 
         {loading && (
-          <div className="text-center my-4">
-            <div className="spinner-border text-success" role="status"></div>
-            <p className="mt-2">Pflanze wird untersucht… 🌿</p>
-          </div>
-        )}
+  <div className="text-center my-4">
+    <div className="spinner-border text-success" role="status"></div>
+    <p className="mt-2">{loadingMessage}</p> {/* ← dynamische Nachricht */}
+  </div>
+)}
+
 
         {diagnosis && (
           <div className="mt-4">
