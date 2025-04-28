@@ -5,36 +5,46 @@ export default function PlantDiagnosisModal({ onClose }) {
   const [description, setDescription] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("Pflanze wird untersucht… 🌿");
-
-
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        const img = new Image();
-        img.src = reader.result;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          // Export als PNG
-          const pngBase64 = canvas.toDataURL('image/png').split(',')[1];
-          resolve(pngBase64);
-        };
-        img.onerror = (error) => reject(error);
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
-  
+  const [loadingMessage, setLoadingMessage] = useState("");
 
   const handlePhotoChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setPhoto(e.target.files[0]);
+    }
+  };
+
+  const uploadPhotoToHuggingFace = async (photo, retry = 0) => {
+    const formData = new FormData();
+    formData.append("file", photo);
+
+    try {
+      const response = await fetch("https://growmate-api.vercel.app/api/analyze", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_HUGGINGFACE_API_KEY}`,
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      console.log("Antwort von Hugging Face:", data);
+
+      if (Array.isArray(data) && data.length > 0 && data[0].generated_text) {
+        return data[0].generated_text;
+      } else {
+        if (retry < 2) {
+          console.warn("Modell schläft noch, versuche es erneut in 10 Sekunden...");
+          setLoadingMessage(`Modell schläft… neuer Versuch in ${10 * (retry + 1)} Sekunden ⏳`);
+          await new Promise((resolve) => setTimeout(resolve, 10000)); // 10 Sekunden warten
+          return uploadPhotoToHuggingFace(photo, retry + 1);
+        } else {
+          console.error("Mehrere Versuche fehlgeschlagen.");
+          return null;
+        }
+      }
+    } catch (error) {
+      console.error("Fehler beim Hochladen an Hugging Face:", error);
+      return null;
     }
   };
 
@@ -46,32 +56,23 @@ export default function PlantDiagnosisModal({ onClose }) {
 
     setLoading(true);
     setDiagnosis("");
-    setLoadingMessage("Foto wird hochgeladen und Modell gestartet… ⏳");
-
-    console.warn("Keine Bildbeschreibung erhalten oder Modell schläft.");
-setLoadingMessage("Das Modell startet gerade oder konnte das Bild nicht analysieren. Wir versuchen es trotzdem anhand deiner Beschreibung...");
-
+    setLoadingMessage("Starte Analyse… 🌿");
 
     try {
       let imageDescription = "";
 
       if (photo) {
-        const base64 = await fileToBase64(photo);
+        setLoadingMessage("Foto wird hochgeladen und analysiert… ⏳");
+        imageDescription = await uploadPhotoToHuggingFace(photo);
 
-        const response = await fetch("/api/diagnose", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ photoBase64: base64 }),
-        });
-
-        const data = await response.json();
-        if (Array.isArray(data) && data.length > 0 && data[0].generated_text) {
-          imageDescription = data[0].generated_text;
-        } else {
-          console.warn("Keine Bildbeschreibung erhalten oder Modell schläft.");
+        if (!imageDescription) {
+          setLoadingMessage("Keine Bildbeschreibung erhalten. Analyse erfolgt nur basierend auf deiner Beschreibung…");
         }
       }
 
+      console.log("Finaler GPT-Prompt:", imageDescription, description);
+
+      // GPT-Prompt vorbereiten
       let prompt = "";
 
       if (imageDescription && description) {
@@ -86,11 +87,12 @@ Analysiere basierend darauf das Pflanzenproblem und gib konkrete Pflegehinweise.
 Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
       }
 
+      // GPT-Analyse starten
       const gptResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+          Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
           model: "gpt-4",
@@ -110,7 +112,8 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
       const gptData = await gptResponse.json();
 
       if (gptData.choices && gptData.choices.length > 0) {
-        setDiagnosis(gptData.choices[0].message.content);
+        const gptAnswer = gptData.choices[0].message.content;
+        setDiagnosis(gptAnswer);
       } else {
         setDiagnosis("Es konnte keine Diagnose erstellt werden. Bitte versuche es erneut.");
       }
@@ -119,6 +122,7 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
       alert("Analyse fehlgeschlagen. Bitte versuche es später erneut.");
     } finally {
       setLoading(false);
+      setLoadingMessage("");
     }
   };
 
@@ -133,7 +137,6 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
         <div className="mb-3">
           <label className="form-label">Foto hochladen (optional)</label>
           <input className="form-control" type="file" accept="image/*" onChange={handlePhotoChange} />
-
           {photo && (
             <div className="mb-3 text-center">
               <img
@@ -156,7 +159,7 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
           <textarea
             className="form-control"
             rows="3"
-            placeholder="z. B. Blätter bekommen braune Spitzen..."
+            placeholder="z. B. Blätter werden gelb…"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           ></textarea>
@@ -172,12 +175,11 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
         </div>
 
         {loading && (
-  <div className="text-center my-4">
-    <div className="spinner-border text-success" role="status"></div>
-    <p className="mt-2">{loadingMessage}</p> {/* ← dynamische Nachricht */}
-  </div>
-)}
-
+          <div className="text-center my-4">
+            <div className="spinner-border text-success" role="status"></div>
+            <p className="mt-2">{loadingMessage || "Pflanze wird untersucht… 🌿"}</p>
+          </div>
+        )}
 
         {diagnosis && (
           <div className="mt-4">
