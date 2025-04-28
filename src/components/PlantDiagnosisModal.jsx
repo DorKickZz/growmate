@@ -1,11 +1,27 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function PlantDiagnosisModal({ onClose }) {
   const [photo, setPhoto] = useState(null);
   const [description, setDescription] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("");
+  const [error, setError] = useState("");
+  const [currentEmoji, setCurrentEmoji] = useState("🌿");
+
+  const emojis = ["🌿", "🌱", "🌵", "🌻", "🍀", "🌳", "🪴"];
+
+  useEffect(() => {
+    let interval;
+    if (loading) {
+      interval = setInterval(() => {
+        const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+        setCurrentEmoji(randomEmoji);
+      }, 500);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const handlePhotoChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -13,81 +29,20 @@ export default function PlantDiagnosisModal({ onClose }) {
     }
   };
 
-  const uploadPhotoToHuggingFace = async (photo, retry = 0) => {
-    const formData = new FormData();
-    formData.append("file", photo);
-
-    try {
-      const response = await fetch("https://growmate-api.vercel.app/api/analyze", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_HUGGINGFACE_API_KEY}`,
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
-      console.log("Antwort von Hugging Face:", data);
-
-      if (Array.isArray(data) && data.length > 0 && data[0].generated_text) {
-        return data[0].generated_text;
-      } else {
-        if (retry < 2) {
-          console.warn("Modell schläft noch, versuche es erneut in 10 Sekunden...");
-          setLoadingMessage(`Modell schläft… neuer Versuch in ${10 * (retry + 1)} Sekunden ⏳`);
-          await new Promise((resolve) => setTimeout(resolve, 10000)); // 10 Sekunden warten
-          return uploadPhotoToHuggingFace(photo, retry + 1);
-        } else {
-          console.error("Mehrere Versuche fehlgeschlagen.");
-          return null;
-        }
-      }
-    } catch (error) {
-      console.error("Fehler beim Hochladen an Hugging Face:", error);
-      return null;
-    }
-  };
-
   const handleAnalyze = async () => {
-    if (!description && !photo) {
-      alert("Bitte lade ein Foto hoch oder gib eine Beschreibung ein.");
+    if (!description.trim()) {
+      setError("Bitte gib eine Problembeschreibung ein.");
       return;
     }
 
     setLoading(true);
     setDiagnosis("");
-    setLoadingMessage("Starte Analyse… 🌿");
+    setError("");
 
     try {
-      let imageDescription = "";
-
-      if (photo) {
-        setLoadingMessage("Foto wird hochgeladen und analysiert… ⏳");
-        imageDescription = await uploadPhotoToHuggingFace(photo);
-
-        if (!imageDescription) {
-          setLoadingMessage("Keine Bildbeschreibung erhalten. Analyse erfolgt nur basierend auf deiner Beschreibung…");
-        }
-      }
-
-      console.log("Finaler GPT-Prompt:", imageDescription, description);
-
-      // GPT-Prompt vorbereiten
-      let prompt = "";
-
-      if (imageDescription && description) {
-        prompt = `Hier ist eine automatische Bildbeschreibung: "${imageDescription}". 
-Zusätzlich gibt der Nutzer folgende Beschreibung an: "${description}".
-Analysiere basierend auf beiden Informationen das Pflanzenproblem und gib konkrete Pflegehinweise.`;
-      } else if (imageDescription) {
-        prompt = `Hier ist eine automatische Bildbeschreibung: "${imageDescription}".
-Analysiere basierend darauf das Pflanzenproblem und gib konkrete Pflegehinweise.`;
-      } else {
-        prompt = `Hier ist eine Nutzereingabe: "${description}".
+      const prompt = `Hier ist eine Nutzereingabe: "${description}".
 Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
-      }
 
-      // GPT-Analyse starten
       const gptResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -99,7 +54,7 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
           messages: [
             {
               role: "system",
-              content: "Du bist ein Pflanzenexperte. Analysiere Probleme anhand von Bildbeschreibungen und Nutzereingaben und gib klare, kurze Pflegehinweise.",
+              content: "Du bist ein Pflanzenexperte. Analysiere Probleme anhand von Nutzereingaben und gib klare, kurze Pflegehinweise.",
             },
             {
               role: "user",
@@ -122,7 +77,6 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
       alert("Analyse fehlgeschlagen. Bitte versuche es später erneut.");
     } finally {
       setLoading(false);
-      setLoadingMessage("");
     }
   };
 
@@ -137,8 +91,9 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
         <div className="mb-3">
           <label className="form-label">Foto hochladen (optional)</label>
           <input className="form-control" type="file" accept="image/*" onChange={handlePhotoChange} />
+          
           {photo && (
-            <div className="mb-3 text-center">
+            <div className="text-center mt-3">
               <img
                 src={URL.createObjectURL(photo)}
                 alt="Foto-Vorschau"
@@ -147,22 +102,23 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
                   maxHeight: "300px",
                   objectFit: "cover",
                   borderRadius: "12px",
-                  marginTop: "10px",
                 }}
               />
+              <p className="small text-muted mt-2">Foto dient nur zur Ansicht und wird nicht analysiert.</p>
             </div>
           )}
         </div>
 
         <div className="mb-3">
-          <label className="form-label">Problembeschreibung</label>
+          <label className="form-label">Problembeschreibung <span className="text-danger">*</span></label>
           <textarea
             className="form-control"
             rows="3"
-            placeholder="z. B. Blätter werden gelb…"
+            placeholder="z. B. Blätter bekommen braune Spitzen..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           ></textarea>
+          {error && <small className="text-danger">{error}</small>}
         </div>
 
         <div className="d-flex justify-content-end">
@@ -170,25 +126,46 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
             Abbrechen
           </button>
           <button className="btn btn-success" onClick={handleAnalyze} disabled={loading}>
-            {loading ? "Analysiere..." : "Analyse starten"}
+            {loading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" />
+                Analysiere...
+              </>
+            ) : (
+              "Analyse starten"
+            )}
           </button>
         </div>
 
         {loading && (
           <div className="text-center my-4">
-            <div className="spinner-border text-success" role="status"></div>
-            <p className="mt-2">{loadingMessage || "Pflanze wird untersucht… 🌿"}</p>
+            <p className="mt-3 fs-4">{currentEmoji}</p>
+            <p className="mt-2">Pflanze wird untersucht…</p>
           </div>
         )}
 
-        {diagnosis && (
-          <div className="mt-4">
-            <h6>Ergebnis:</h6>
-            <div className="alert alert-success" style={{ whiteSpace: "pre-wrap" }}>
-              {diagnosis}
-            </div>
-          </div>
-        )}
+{diagnosis && (
+  <div className="mt-4">
+    <h6>Ergebnis:</h6>
+    <div
+      className="alert alert-success"
+      style={{ whiteSpace: "pre-wrap", lineHeight: "1.6" }}
+      dangerouslySetInnerHTML={{
+        __html: diagnosis
+          .split(/(?<=\.|\!|\?)\s+/)
+          .map((sentence) => {
+            return `<p>${sentence.replace(
+              /(braun|gelb|trocken|nass|fäule|wurzeln|schimmel|gießen|düngen|standort|wasser|licht|pflege|krankheit)/gi,
+              (match) => `<strong>${match}</strong>`
+            )}</p>`;
+          })
+          .join(""),
+      }}
+    />
+  </div>
+)}
+
+
       </div>
     </div>
   );
