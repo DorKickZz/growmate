@@ -147,23 +147,12 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
 {diagnosis && (
   <div className="mt-4">
     <h6>Ergebnis:</h6>
-    <div
-      className="alert alert-success"
-      style={{ whiteSpace: "pre-wrap", lineHeight: "1.6" }}
-      dangerouslySetInnerHTML={{
-        __html: diagnosis
-          .split(/(?<=\.|\!|\?)\s+/)
-          .map((sentence) => {
-            return `<p>${sentence.replace(
-              /(braun|gelb|trocken|nass|fäule|wurzeln|schimmel|gießen|düngen|standort|wasser|licht|pflege|krankheit)/gi,
-              (match) => `<strong>${match}</strong>`
-            )}</p>`;
-          })
-          .join(""),
-      }}
-    />
+    <div className="alert alert-success" style={{ whiteSpace: "pre-wrap" }}>
+      {diagnosis}
+    </div>
   </div>
 )}
+
 
 
       </div>
