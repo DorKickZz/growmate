@@ -3,6 +3,10 @@ import { supabase } from "../supabaseClient"
 import { format } from "date-fns"
 import { BsDropletFill, BsFlower2 } from "react-icons/bs"
 import { FaFlask, FaRecycle } from "react-icons/fa"
+import PlantDiagnosisModal from "../components/PlantDiagnosisModal"; // Import hinzufügen
+
+
+
 
 export default function Dashboard() {
   const [plants, setPlants] = useState([])
@@ -15,6 +19,7 @@ export default function Dashboard() {
   const [showFertilize, setShowFertilize] = useState(false)
   const [showRepot, setShowRepot] = useState(false)
   const [showAll, setShowAll] = useState(false)
+  const [showDiagnosisModal, setShowDiagnosisModal] = useState(false); // State anlegen
 
   useEffect(() => {
     fetchPlants()
@@ -152,6 +157,18 @@ export default function Dashboard() {
           onClick={() => setShowRepot(!showRepot)}
         />
       </div>
+
+      <div className="text-center mb-4">
+  <button
+    className="btn btn-outline-primary"
+    onClick={() => setShowDiagnosisModal(true)}
+  >
+    🔍 Pflanzenproblem erkennen lassen
+  </button>
+</div>
+
+{showDiagnosisModal && <PlantDiagnosisModal onClose={() => setShowDiagnosisModal(false)} />}
+
 
       {showAll && (
         <PlantList
