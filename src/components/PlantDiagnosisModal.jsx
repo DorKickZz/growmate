@@ -4,35 +4,20 @@ export default function PlantDiagnosisModal({ onClose }) {
   const [photo, setPhoto] = useState(null);
   const [description, setDescription] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
-  const [loadingPhoto, setLoadingPhoto] = useState(false);
-  const [loadingGPT, setLoadingGPT] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result.split(",")[1]); // Nur Base64-Teil nehmen
+      reader.onerror = (error) => reject(error);
+    });
+  };
 
   const handlePhotoChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setPhoto(e.target.files[0]);
-    }
-  };
-
-  const uploadPhotoToHuggingFace = async (photo) => {
-    setLoadingPhoto(true);
-    try {
-      const response = await fetch("https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_HUGGINGFACE_API_KEY}`,
-          "Content-Type": "application/octet-stream",
-        },
-        body: photo,
-      });
-
-      const data = await response.json();
-      console.log("Antwort von Hugging Face:", data);
-      return data;
-    } catch (error) {
-      console.error("Fehler beim Hochladen an Hugging Face:", error);
-      throw error;
-    } finally {
-      setLoadingPhoto(false);
     }
   };
 
@@ -42,23 +27,29 @@ export default function PlantDiagnosisModal({ onClose }) {
       return;
     }
 
+    setLoading(true);
     setDiagnosis("");
 
     try {
       let imageDescription = "";
 
       if (photo) {
-        const data = await uploadPhotoToHuggingFace(photo);
+        const base64 = await fileToBase64(photo);
 
+        const response = await fetch("/api/diagnose", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ photoBase64: base64 }),
+        });
+
+        const data = await response.json();
         if (Array.isArray(data) && data.length > 0 && data[0].generated_text) {
           imageDescription = data[0].generated_text;
-          console.log("Bildbeschreibung von Hugging Face:", imageDescription);
         } else {
           console.warn("Keine Bildbeschreibung erhalten oder Modell schläft.");
         }
       }
 
-      // GPT-Prompt vorbereiten
       let prompt = "";
 
       if (imageDescription && description) {
@@ -73,15 +64,11 @@ Analysiere basierend darauf das Pflanzenproblem und gib konkrete Pflegehinweise.
 Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
       }
 
-      console.log("Finaler GPT-Prompt:", prompt);
-
-      // GPT-Analyse starten
-      setLoadingGPT(true);
       const gptResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+          "Authorization": `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
           model: "gpt-4",
@@ -101,8 +88,7 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
       const gptData = await gptResponse.json();
 
       if (gptData.choices && gptData.choices.length > 0) {
-        const gptAnswer = gptData.choices[0].message.content;
-        setDiagnosis(gptAnswer);
+        setDiagnosis(gptData.choices[0].message.content);
       } else {
         setDiagnosis("Es konnte keine Diagnose erstellt werden. Bitte versuche es erneut.");
       }
@@ -110,7 +96,7 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
       console.error("Fehler bei der Analyse:", error);
       alert("Analyse fehlgeschlagen. Bitte versuche es später erneut.");
     } finally {
-      setLoadingGPT(false);
+      setLoading(false);
     }
   };
 
@@ -126,7 +112,6 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
           <label className="form-label">Foto hochladen (optional)</label>
           <input className="form-control" type="file" accept="image/*" onChange={handlePhotoChange} />
 
-          {/* Foto-Vorschau */}
           {photo && (
             <div className="mb-3 text-center">
               <img
@@ -159,30 +144,18 @@ Analysiere das Pflanzenproblem und gib konkrete Pflegehinweise.`;
           <button className="btn btn-secondary me-2" onClick={onClose}>
             Abbrechen
           </button>
-          <button className="btn btn-success" onClick={handleAnalyze} disabled={loadingPhoto || loadingGPT}>
-            {loadingPhoto || loadingGPT ? "Bitte warten..." : "Analyse starten"}
+          <button className="btn btn-success" onClick={handleAnalyze} disabled={loading}>
+            {loading ? "Analysiere..." : "Analyse starten"}
           </button>
         </div>
 
-        {/* Ladeanzeige */}
-        {(loadingPhoto || loadingGPT) && (
+        {loading && (
           <div className="text-center my-4">
-            {loadingPhoto && (
-              <>
-                <div className="spinner-border text-primary" role="status"></div>
-                <p className="mt-2">📷 Foto wird analysiert…</p>
-              </>
-            )}
-            {loadingGPT && !loadingPhoto && (
-              <>
-                <div className="spinner-border text-success" role="status"></div>
-                <p className="mt-2">💬 GPT denkt nach…</p>
-              </>
-            )}
+            <div className="spinner-border text-success" role="status"></div>
+            <p className="mt-2">Pflanze wird untersucht… 🌿</p>
           </div>
         )}
 
-        {/* Ergebnisanzeige */}
         {diagnosis && (
           <div className="mt-4">
             <h6>Ergebnis:</h6>
